@@ -1,26 +1,27 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  /* Бренд: тепла «пивна» гама */
+  --color-brand-50: #fef8ee;
+  --color-brand-100: #fcedd5;
+  --color-brand-200: #f8d8a8;
+  --color-brand-300: #f2bd73;
+  --color-brand-400: #ec9f3e;
+  --color-brand-500: #e08221;
+  --color-brand-600: #c1681a;
+  --color-brand-700: #9d4f19;
+  --color-brand-800: #7f3f1b;
+  --color-brand-900: #68341a;
+
+  --color-surface: #faf9f7;
+  --color-ink: #1c1917;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  @apply bg-surface text-ink antialiased;
 }
