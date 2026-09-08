@@ -45,4 +45,16 @@ describe('POST /api/auth/login', () => {
     expect(body.error.message).toBe('Невірний email або пароль')
     expect(setSpy).not.toHaveBeenCalled()
   })
+
+  it('бекенд недоступний (мережа) → 502 INTERNAL_ERROR', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('connect ECONNREFUSED') }))
+    const res = await login(new Request('http://l/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email: 'a@b.c', password: 'Password1' }),
+    }))
+    expect(res.status).toBe(502)
+    const body = await res.json()
+    expect(body.error).toEqual({ code: 'INTERNAL_ERROR', message: 'Сервіс тимчасово недоступний', details: null })
+    expect(setSpy).not.toHaveBeenCalled()
+  })
 })
