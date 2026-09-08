@@ -20,7 +20,9 @@ const sizeClasses = {
   md: 'px-4 py-2',
 } satisfies Record<NonNullable<ButtonProps['size']>, string>
 
-export function Button({ variant = 'primary', size = 'md', className, ...props }: ButtonProps) {
+// За замовчуванням type="button", щоб кнопка всередині <form> ненавмисно не сабмітнула його;
+// явний type="submit" у пропсах усе одно перезаписує дефолт
+export function Button({ variant = 'primary', size = 'md', type = 'button', className, ...props }: ButtonProps) {
   const classes = [
     'inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-colors',
     'disabled:pointer-events-none disabled:opacity-50',
@@ -30,5 +32,5 @@ export function Button({ variant = 'primary', size = 'md', className, ...props }
   ]
     .filter(Boolean)
     .join(' ')
-  return <button className={classes} {...props} />
+  return <button type={type} className={classes} {...props} />
 }
