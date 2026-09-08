@@ -9,7 +9,8 @@ vi.mock('next/headers', () => ({
   })),
 }))
 
-import { GET as proxyGet } from '@/app/api/v1/[...path]/route'
+import { GET as proxyGet, POST as proxyPost } from '@/app/api/v1/[...path]/route'
+import { decodeTokens } from '@/lib/auth/session'
 
 const jsonRes = (body: unknown, status = 200, headers: Record<string, string> = { 'content-type': 'application/json' }) =>
   new Response(JSON.stringify(body), { status, headers })
@@ -41,9 +42,39 @@ describe('проксі /api/v1', () => {
     vi.stubGlobal('fetch', fetchMock)
     const res = await proxyGet(new Request('http://l/api/v1/auth/me') as never, makeCtx(['auth', 'me']) as never)
     expect(res.status).toBe(200)
-    expect(cookieStore.value).toBe(JSON.stringify({ accessToken: 'NEW_AT', refreshToken: 'NEW_RT' }))
+    // ротація спостережувана у Set-Cookie відповіді (сервер декодує value при читанні cookie)
+    const session = res.headers.getSetCookie().find((c) => c.startsWith('piyachok_session='))
+    expect(session).toBeDefined()
+    const cookieValue = decodeURIComponent(session!.split(';')[0]!.slice('piyachok_session='.length))
+    expect(decodeTokens(cookieValue)).toEqual({ accessToken: 'NEW_AT', refreshToken: 'NEW_RT' })
     const retryInit = fetchMock.mock.calls[2][1] as RequestInit
     expect((retryInit.headers as Headers).get('Authorization')).toBe('Bearer NEW_AT')
+  })
+
+  it('retry після refresh несе те саме тіло POST', async () => {
+    const payload = JSON.stringify({ name: 'Пиячок IPA' })
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonRes({ error: { code: 'UNAUTHORIZED', message: 'x', details: null } }, 401))
+      .mockResolvedValueOnce(jsonRes({ accessToken: 'NEW_AT', refreshToken: 'NEW_RT' }, 201)) // /auth/refresh
+      .mockResolvedValueOnce(jsonRes({ data: { ok: 1 } }))                                  // retry POST
+    vi.stubGlobal('fetch', fetchMock)
+    const res = await proxyPost(new Request('http://l/api/v1/orders', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: payload,
+    }) as never, makeCtx(['orders']) as never)
+    expect(res.status).toBe(200)
+    const retryInit = fetchMock.mock.calls[2][1] as RequestInit
+    expect(new TextDecoder().decode(retryInit.body as ArrayBuffer)).toBe(payload)
+    expect((retryInit.headers as Headers).get('content-type')).toBe('application/json')
+  })
+
+  it('бекенд недоступний → 502 INTERNAL_ERROR', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('connect ECONNREFUSED') }))
+    const res = await proxyGet(new Request('http://l/api/v1/venues') as never, makeCtx(['venues']) as never)
+    expect(res.status).toBe(502)
+    const body = await res.json()
+    expect(body.error).toEqual({ code: 'INTERNAL_ERROR', message: 'Сервіс тимчасово недоступний', details: null })
   })
 
   it('мертвий refresh → проксує 401', async () => {

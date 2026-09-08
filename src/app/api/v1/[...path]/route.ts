@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import {
-  getSessionTokens, setSessionCookie, refreshTokens, SESSION_COOKIE, sessionCookieOptions, encodeTokens,
+  getSessionTokens, refreshTokens, SESSION_COOKIE, sessionCookieOptions, encodeTokens,
 } from '@/lib/auth/session'
 
 export const dynamic = 'force-dynamic'
@@ -9,7 +9,7 @@ const BACKEND = process.env.BACKEND_URL ?? 'http://localhost:3000'
 
 type Ctx = { params: Promise<{ path: string[] }> }
 
-async function forward(req: NextRequest, path: string[], accessToken: string | null): Promise<Response> {
+async function forward(req: NextRequest, path: string[], accessToken: string | null, body?: ArrayBuffer): Promise<Response> {
   // search з req.url — однаково працює і для NextRequest, і для plain Request у тестах
   const target = `${BACKEND}/api/v1/${path.join('/')}${new URL(req.url).search}`
   const headers = new Headers()
@@ -17,13 +17,19 @@ async function forward(req: NextRequest, path: string[], accessToken: string | n
   if (contentType) headers.set('content-type', contentType)
   if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`)
 
-  return fetch(target, {
-    method: req.method,
-    headers,
-    body: req.body ?? undefined,
-    // @ts-expect-error duplex потрібен для стрімінгового body
-    duplex: 'half',
-  })
+  try {
+    return await fetch(target, {
+      method: req.method,
+      headers,
+      body,
+    })
+  } catch {
+    // Бекенд недоступний (мережа) — 502 за контрактом помилок
+    return NextResponse.json(
+      { error: { code: 'INTERNAL_ERROR', message: 'Сервіс тимчасово недоступний', details: null } },
+      { status: 502 },
+    )
+  }
 }
 
 async function passthrough(res: Response, newTokens?: string): Promise<NextResponse> {
@@ -40,15 +46,17 @@ async function handle(req: NextRequest, ctx: Ctx): Promise<NextResponse> {
   const { path } = await ctx.params
   const tokens = await getSessionTokens()
 
-  let backendRes = await forward(req, path, tokens?.accessToken ?? null)
+  // Буферуємо тіло один раз: ReadableStream одноразовий, а повторний запит після refresh мусить нести ті самі дані
+  const hasBody = req.method !== 'GET' && req.method !== 'HEAD' && req.body !== null
+  const body = hasBody ? await req.arrayBuffer() : undefined
+
+  let backendRes = await forward(req, path, tokens?.accessToken ?? null, body)
 
   // Авто-refresh при 401 (окрім самого refresh-ендпоінта — його клієнти не викликають)
   if (backendRes.status === 401 && tokens?.refreshToken && path.join('/') !== 'auth/refresh') {
     const fresh = await refreshTokens(tokens.refreshToken)
     if (fresh) {
-      // ротація cookie (можлива лише в route handlers) до повторного запиту
-      await setSessionCookie(fresh)
-      backendRes = await forward(req, path, fresh.accessToken)
+      backendRes = await forward(req, path, fresh.accessToken, body)
       return passthrough(backendRes, encodeTokens(fresh))
     }
   }
