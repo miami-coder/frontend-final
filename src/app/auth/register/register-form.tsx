@@ -87,33 +87,33 @@ export function RegisterForm() {
       {error && <p role="alert" className="rounded-lg bg-red-50 p-2 text-sm text-red-700">{error}</p>}
       <label className="block text-sm">
         Ім&apos;я
-        <Input value={firstname} autoComplete="given-name" onChange={(e) => setFirstname(e.target.value)} />
         {fieldErrors.firstname && <span role="alert" className="block text-red-600">{fieldErrors.firstname}</span>}
+        <Input value={firstname} autoComplete="given-name" onChange={(e) => setFirstname(e.target.value)} />
       </label>
       <label className="block text-sm">
         Прізвище
-        <Input value={lastname} autoComplete="family-name" onChange={(e) => setLastname(e.target.value)} />
         {fieldErrors.lastname && <span role="alert" className="block text-red-600">{fieldErrors.lastname}</span>}
+        <Input value={lastname} autoComplete="family-name" onChange={(e) => setLastname(e.target.value)} />
       </label>
       <label className="block text-sm">
         Email
-        <Input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         {fieldErrors.email && <span role="alert" className="block text-red-600">{fieldErrors.email}</span>}
+        <Input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
       </label>
       <label className="block text-sm">
         Пароль
-        <Input type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
         {fieldErrors.password && <span role="alert" className="block text-red-600">{fieldErrors.password}</span>}
+        <Input type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
       </label>
       <label className="block text-sm">
         Вік (необов&apos;язково)
-        <Input type="number" min={18} value={age} onChange={(e) => setAge(e.target.value)} />
         {fieldErrors.age && <span role="alert" className="block text-red-600">{fieldErrors.age}</span>}
+        <Input type="number" min={18} value={age} onChange={(e) => setAge(e.target.value)} />
       </label>
       <label className="block text-sm">
         Телефон (необов&apos;язково)
-        <Input type="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
         {fieldErrors.phone && <span role="alert" className="block text-red-600">{fieldErrors.phone}</span>}
+        <Input type="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
       </label>
       <label className="flex items-start gap-2 text-sm">
         <input
