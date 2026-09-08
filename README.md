@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Пиячок — фронтенд каталогу закладів України
 
-## Getting Started
+«Пиячок» — каталог барів, ресторанів та кафе України: рейтинги, відгуки, новини та зустрічі.
+Це фронтенд (Next.js 16 App Router, React 19, TypeScript, Tailwind v4, zod). Інтерфейс — українською.
 
-First, run the development server:
+## Запуск
+
+**Бекенд** — проєкт `backend-final` (NestJS), доступний на `http://localhost:3000/api/v1`:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cd backend-final
+pnpm start:dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+**Фронтенд** — порт 3001:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+pnpm install
+pnpm dev
+# → http://localhost:3001
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+**Змінні оточення** — `.env.local`:
 
-## Learn More
+```
+BACKEND_URL=http://localhost:3000
+```
 
-To learn more about Next.js, take a look at the following resources:
+`BACKEND_URL` — адреса бекенда (за замовчуванням `http://localhost:3000`); фронтенд проксирує запити на `${BACKEND_URL}/api/v1`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Скрипти
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Команда | Призначення |
+| --- | --- |
+| `pnpm dev` | dev-сервер на порту 3001 |
+| `pnpm build` | продакшн-збірка |
+| `pnpm start` | запуск продакшн-збірки |
+| `pnpm test` | тести (Vitest + React Testing Library) |
+| `pnpm test:watch` | тести у режимі watch |
+| `pnpm typecheck` | перевірка типів (`tsc --noEmit`) |
+| `pnpm lint` | ESLint |
 
-## Deploy on Vercel
+Потрібен Node 20+ і пакувальник `pnpm`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Архітектура (BFF)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Фронтенд не звертається до бекенда напряму з браузера — він працює як BFF (Backend-For-Frontend):
+
+- Усі клієнтські запити йдуть на `/api/v1/*`, які переспрямовуються на `${BACKEND_URL}/api/v1` (маршрут `src/app/api/v1/[...path]/route.ts`).
+- Пара JWT-токенів (access + refresh) зберігається в httpOnly-cookie `piyachok_session` — токени недоступні з JS (`document.cookie` їх не містить), refresh виконується на сервері.
+- OAuth (Google/Facebook) — кнопки ведуть на бекенд; колбек `?access&refresh` обробляє `src/app/auth/callback` і встановлює ту саму cookie.
+- Каталог закладів рендериться SSR: фільтри/сортування/пагінація зберігаються в URL.
+
+## Структура
+
+```
+src/app       — маршрути App Router (сторінки, layout, /api/v1-проксі, auth)
+src/components — UI-компоненти дизайн-системи та layout
+src/lib       — api-клієнт, сесія, валідація (zod), побудова query
+src/types     — типи даних API та парсери
+```
+
+## Брами якості
+
+Перед комітом мають проходити:
+
+```bash
+pnpm typecheck && pnpm lint && pnpm test && pnpm build
+```
